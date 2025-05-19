@@ -13,6 +13,7 @@ import torch
 class MyAI:
     def __init__(self):
         self.name = "Jarvis"
+        self.usingText = True
         self.recognizer = sr.Recognizer()
         self.microphone = sr.Microphone()
         self.engine = pyttsx3.init()
@@ -26,24 +27,30 @@ class MyAI:
         self.conversation_history = []  # conversation history
 
     def speak(self, text):
-        self.engine.say(text)
-        self.engine.runAndWait()
+        if self.usingText==True:
+            print(text)
+        else:
+            self.engine.say(text)
+            self.engine.runAndWait()
 
     def listen(self):
-        r = sr.Recognizer()
-        with sr.Microphone() as source:
-            print("Listening...")
-            audio = r.listen(source)
-            try:
-                command = r.recognize_google(audio)
-                print(f"You said: {command}")
-                return command.lower()
-            except sr.UnknownValueError:
-                print("Sorry, I did not understand that.")
-                return None
-            except sr.RequestError as e:
-                print(f"Could not request results; {e}")
-                return None
+        if self.usingText==True:
+            return input('You:')
+        else:
+            r = sr.Recognizer()
+            with sr.Microphone() as source:
+                print("Listening...")
+                audio = r.listen(source)
+                try:
+                    command = r.recognize_google(audio)
+                    print(f"You said: {command}")
+                    return command.lower()
+                except sr.UnknownValueError:
+                    print("Sorry, I did not understand that.")
+                    return None
+                except sr.RequestError as e:
+                    print(f"Could not request results; {e}")
+                    return None
 
     def get_local_gpt_response(self, prompt):
         
@@ -67,7 +74,7 @@ class MyAI:
         self.conversation_history.append({"role": "assistant", "content": response})
         return response
 
-    def start(self):
+    def startVoice(self):
         self.speak(f"Hello, my name is {self.name}. How can I help you today?")
         while True:
             command = self.listen()
