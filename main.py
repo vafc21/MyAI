@@ -1,11 +1,14 @@
 from openai import OpenAI
 import json
 from datetime import datetime
+from dotenv import load_dotenv
+import os
 
 class Jarvis:
     def __init__(self):
         self.name = "Jarvis"
-        self.client = OpenAI(api_key="YOUR_API_KEY")
+        load_dotenv()
+        self.client = OpenAI(api_key=str(os.getenv("OPENAI_API_KEY")))
 
     def get_current_time(self, location):
         # Simulated function logic
