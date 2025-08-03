@@ -7,40 +7,37 @@ import os
 class Jarvis:
     def __init__(self):
         self.name = "Jarvis"
+
+        # Load API key from .env
         load_dotenv()
-        self.client = OpenAI(api_key=str(os.getenv("OPENAI_API_KEY")))
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            raise ValueError("Missing OPENROUTER_API_KEY in .env")
+
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url="https://openrouter.ai/api/v1"
+        )
+        # Load function definitions from JSON file
+        try:
+            with open("functions.json", "r") as f:
+                self.tools = json.load(f)
+        except:
+            print("⚠️ No fuctons found in functions.json, using default tools. ⚠️")
 
     def get_current_time(self, location):
-        # Simulated function logic
         return f"The current time in {location} is {datetime.now().strftime('%H:%M:%S')}"
 
     def gpt_response(self, prompt):
-        functions = [
-            {
-                "name": "get_current_time",
-                "description": "Get the current time in a given location",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "location": {
-                            "type": "string",
-                            "description": "The city name, e.g. San Francisco",
-                        }
-                    },
-                    "required": ["location"]
-                }
-            }
-        ]
-
         messages = [
-            {"role": "system", "content": "You are an assistant that can check time."},
+            {"role": "system", "content": "You are a helpful assistant. Please answer the user's questions and use tools when necessary. Only use futions when needed. Do not tell the user about your tools only if needed use them."},
             {"role": "user", "content": prompt}
         ]
 
         response = self.client.chat.completions.create(
-            model="gpt-4o",
+            model="mistralai/mistral-7b-instruct",
             messages=messages,
-            tools=functions,
+            tools=self.tools,
             tool_choice="auto"
         )
 
@@ -52,32 +49,38 @@ class Jarvis:
             args = json.loads(call.function.arguments)
 
             if func_name == "get_current_time":
-                result = self.get_current_time(location=args["location"])
+                result = self.get_current_time(args["location"])
             else:
                 result = "Function not implemented."
 
-            messages.append(assistant_msg)
-            messages.append({
-                "role": "tool",
-                "name": func_name,
-                "content": result
-            })
+            messages.append({"role": "assistant", "tool_calls": [call]})
+            messages.append({"role": "tool", "name": func_name, "content": result})
 
             final = self.client.chat.completions.create(
-                model="gpt-4o",
+                model="mistralai/mistral-7b-instruct",
                 messages=messages
             )
-
             return final.choices[0].message.content
         else:
             return assistant_msg.content
 
-# Run the assistant
+# Run the assi
 if __name__ == "__main__":
     jarvis = Jarvis()
+    print("Jarvis is ready. Type something or 'exit' to quit.\n")  # ✅ Add this line
+
     while True:
-        user_input = input("You: ")
+        user_input = input("You: ")  # If nothing shows, maybe stdin isn't working
+        if user_input.strip() == "":
+            print("⚠️ Empty input. Please type something.")
+            continue
         if user_input.lower() == "exit":
+            print("Goodbye!")
             break
-        response = jarvis.gpt_response(user_input)
-        print(f"{jarvis.name}: {response}")
+
+        print("🔄 Thinking...")
+        try:
+            response = jarvis.gpt_response(user_input)
+            print(f"{jarvis.name}: {response}")
+        except Exception as e:
+            print("❌ Error:", e)
